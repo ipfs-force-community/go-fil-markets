@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/dagcbor"
+	"github.com/ipld/go-ipld-prime/codec/dagjson"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	"github.com/ipld/go-ipld-prime/node/basicnode"
 	"github.com/ipld/go-ipld-prime/node/bindnode"
@@ -79,6 +81,29 @@ func (sn *CborGenCompatibleNode) MarshalCBOR(w io.Writer) error {
 		}
 	}
 	return dagcbor.Encode(node, w)
+}
+
+// MarshalJSON is for encoding/json compatibility
+func (sn *CborGenCompatibleNode) MarshalJSON() ([]byte, error) {
+	node := datamodel.Null
+	if sn != nil && sn.Node != nil {
+		node = sn.Node
+		if tn, ok := node.(schema.TypedNode); ok {
+			node = tn.Representation()
+		}
+	}
+	return ipld.Encode(node, dagjson.Encode)
+}
+
+// UnmarshalJSON is for encoding/json compatibility
+func (sn *CborGenCompatibleNode) UnmarshalJSON(data []byte) error {
+	// convert it to a Node
+	node, err := ipld.Decode(data, dagjson.Decode)
+	if err != nil {
+		return err
+	}
+	sn.Node = node
+	return nil
 }
 
 func cborGenCompatibleNodeFromAny(node datamodel.Node) (interface{}, error) {
